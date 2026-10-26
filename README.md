@@ -116,3 +116,15 @@ GET /api/v1/employees allows at most 10 requests per client IP in any rolling 5-
 
 The reusable middleware lives in internal/httpapi/rate_limit.go and is attached in employee_routes.go. It synchronizes concurrent requests, expires inactive client entries lazily, and stores quotas in memory per server process. Restarting resets quotas; multiple replicas would require a shared limiter. Trusted proxies are disabled, so clients cannot change quotas by supplying X-Forwarded-For. If deploying behind a reverse proxy, configure its trusted addresses deliberately so client IPs resolve correctly. Clients sharing one IP also share one quota.
 
+
+## Swagger API documentation
+
+Start the server with go run ./cmd/api, then open http://127.0.0.1:8080/swagger/index.html. Swagger UI lets you inspect schemas and try all CRUD endpoints. The JSON specification is at /swagger/doc.json. Both URLs use the same server address as the API; no host or port is hardcoded in the specification.
+
+Annotations next to handlers are the source of truth. After changing API annotations or request/response schemas, run:
+
+```powershell
+go generate ./internal/httpapi
+```
+
+The generator is pinned to Swag v1.16.6. It writes internal/apidocs/docs.go, swagger.json, and swagger.yaml; commit these files together with annotation changes. Normal startup needs no generation step or external CDN. The generated specification uses Swagger 2.0. The UI is served separately from employee handlers and is not subject to the employee-list rate limit; requests made through Try it out still follow normal endpoint limits.

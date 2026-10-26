@@ -14,3 +14,13 @@ type EmployeeResponse struct {
 func newEmployeeResponse(e employee.Employee) EmployeeResponse {
 	return EmployeeResponse{ID: e.ID, Name: e.Name, Email: e.Email, Department: e.Department}
 }
+
+// EmployeeDataResponse wraps one employee in the API success envelope.
+type EmployeeDataResponse struct {
+	Data EmployeeResponse `json:"data"`
+}
+
+// EmployeeListResponse wraps an employee list in the API success envelope.
+type EmployeeListResponse struct {
+	Data []EmployeeResponse `json:"data"`
+}

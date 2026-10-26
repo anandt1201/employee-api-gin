@@ -15,6 +15,8 @@ func NewRouter(service *employee.Service, log *slog.Logger) *gin.Engine {
 	// Direct local requests only; do not trust arbitrary forwarded client IPs.
 	_ = router.SetTrustedProxies(nil)
 
+	registerSwagger(router)
+
 	router.GET("/healthz", health)
 	api := router.Group("/api/v1")
 	NewEmployeeHandler(service, log).RegisterRoutes(api)

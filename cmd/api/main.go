@@ -15,6 +15,10 @@ import (
 	"example.com/employee-api/internal/repository"
 )
 
+// @title Employee API
+// @version 1.0
+// @description Employee CRUD API. The list endpoint allows 10 requests per client IP per rolling 5-second window. Storage is currently process-local.
+// @BasePath /
 func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if err := run(log); err != nil {
