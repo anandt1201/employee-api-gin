@@ -4,14 +4,16 @@ Iteration 1: employees live in a concurrency-safe **slice** (Go's list-like coll
 
 ## Run
 
+Use your existing Go installation (Go 1.25 or newer). Check it with `go version`; there is no separate SDK to install for GoLand.
+
 From PowerShell:
 
 ```powershell
-cd Z:\Study\employee-api
+cd Z:\Study\employee-api-gin
 go run ./cmd/api
 ```
 
-Open http://127.0.0.1:8080/healthz. The module requires Go 1.25+; Go 1.21+ can automatically download the requested toolchain when GOTOOLCHAIN=auto. Gin is pinned to v1.12.0; commit go.mod and go.sum together. The module name example.com/employee-api is a local placeholder; replace it and imports when publishing to your own repository.
+The default port is **8080**. Open [health check](http://127.0.0.1:8080/healthz) or [Swagger UI](http://127.0.0.1:8080/swagger/index.html). The module requires Go 1.25+; Go 1.21+ can automatically download the requested toolchain when GOTOOLCHAIN=auto. Gin is pinned to v1.12.0; commit go.mod and go.sum together. The module name example.com/employee-api is a local placeholder; replace it and imports when publishing to your own repository.
 
 Optional configuration:
 
@@ -68,6 +70,10 @@ internal/httpapi/request.go        Shared JSON decoding and ID parsing
 internal/httpapi/response.go       Shared error responses
 internal/httpapi/health_handler.go Health endpoint
 internal/httpapi/employee_response.go Employee response DTO and mapping
+internal/httpapi/rate_limit.go     Sliding-window rate-limit middleware
+internal/httpapi/swagger.go        Swagger UI routes and generation directive
+internal/apidocs/                  Generated Swagger specification and registration
+.run/Employee API.run.xml         Shared GoLand run/debug configuration
 docs/architecture.md               Design walkthrough and database migration plan
 ```
 
@@ -94,7 +100,7 @@ go build ./cmd/api
 go test -race ./...
 ```
 
-Tests exercise the real router, service, and list repository together, including CRUD, normalization, duplicate emails, invalid input, and missing records. Repository tests cover concurrent access, copy isolation, uniqueness, and cancellation.
+Tests stay beside their implementation in *_test.go files. They cover CRUD, normalization, duplicate emails, invalid input, missing records, null and oversized request bodies, rate-limit concurrency and expiry, and Swagger UI/specification routes. Repository tests cover concurrent access, copy isolation, uniqueness, and cancellation.
 
 ## Learning sequence
 
@@ -107,15 +113,11 @@ References: [Effective Go](https://go.dev/doc/effective_go), [Go module layout](
 
 Request and response naming: use EmployeeRequest for create/update payloads and EmployeeResponse for returned employee data. These are Go structs (Go does not have classes). Employee remains the internal domain model.
 
-
-
-
 ## List endpoint rate limit
 
 GET /api/v1/employees allows at most 10 requests per client IP in any rolling 5-second window. Additional requests return HTTP 429 with the usual error envelope (code rate_limit_exceeded) and Retry-After in whole seconds, rounded up. Blocked requests do not extend the window. Other endpoints, including GET /api/v1/employees/:id, are unaffected.
 
 The reusable middleware lives in internal/httpapi/rate_limit.go and is attached in employee_routes.go. It synchronizes concurrent requests, expires inactive client entries lazily, and stores quotas in memory per server process. Restarting resets quotas; multiple replicas would require a shared limiter. Trusted proxies are disabled, so clients cannot change quotas by supplying X-Forwarded-For. If deploying behind a reverse proxy, configure its trusted addresses deliberately so client IPs resolve correctly. Clients sharing one IP also share one quota.
-
 
 ## Swagger API documentation
 
@@ -128,3 +130,19 @@ go generate ./internal/httpapi
 ```
 
 The generator is pinned to Swag v1.16.6. It writes internal/apidocs/docs.go, swagger.json, and swagger.yaml; commit these files together with annotation changes. Normal startup needs no generation step or external CDN. The generated specification uses Swagger 2.0. The UI is served separately from employee handlers and is not subject to the employee-list rate limit; requests made through Try it out still follow normal endpoint limits.
+
+## GoLand run and debug
+
+Open the repository root (the folder containing go.mod) in GoLand. Under **Settings > Go > GOROOT**, select your existing system Go installation. For the current Windows setup, this is:
+
+```text
+C:\Program Files\Go
+```
+
+GoLand calls this a local Go SDK; it is the same installation used by the terminal, not an additional download. Each developer selects the path appropriate to their machine. The Go version must meet the requirement in go.mod (currently Go 1.25+).
+
+Select the shared **Employee API** configuration from the run configuration dropdown, then click **Run** or **Debug**. Set breakpoints in the editor as usual.
+
+The shared configuration is stored in .run/Employee API.run.xml. It builds the cmd/api directory with the repository root as its working directory; project-relative paths make it portable across machines and folder names. It uses the application's default address, 127.0.0.1:8080, unless HTTP_ADDR is set in your environment. Swagger UI is available at http://127.0.0.1:8080/swagger/index.html.
+
+The shared configuration contains no machine-specific SDK or module paths. Keep .idea/ local; it contains SDK, workspace, and breakpoint settings. If the new configuration does not appear immediately, reopen the project.

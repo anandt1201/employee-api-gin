@@ -3,3 +3,6 @@
 *.test
 coverage.out
 .env
+
+# Local JetBrains IDE settings; shared run configurations live in .run/.
+.idea/
